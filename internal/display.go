@@ -36,6 +36,63 @@ func fakeNames() []string {
 	}
 }
 
+func (d *Display) renderAddFriendButton() *tview.Button {
+	addFriendButton := tview.NewButton("ADD USER").SetSelectedFunc(func() {
+		form := tview.NewForm().
+			AddInputField("username", "", 20, nil, nil).
+			AddButton("Add", func() {
+				// call api
+			}).
+			AddButton("Cancel", func() {
+				d.app.SetRoot(d.layout, true).SetFocus(d.list) // Return to main layout
+			})
+
+		form.SetBorder(true).SetTitle("Add a Friend").SetTitleAlign(tview.AlignCenter)
+
+		// Show the form as the new root
+		d.app.SetRoot(form, true).SetFocus(form)
+	})
+	addFriendButton.SetBorder(true)
+	return addFriendButton
+}
+
+func (d *Display) renderRemoveFriendButton() *tview.Button {
+	removeFriendButton := tview.NewButton("REMOVE USER").SetSelectedFunc(func() {
+		form := tview.NewForm().
+			AddInputField("username", "", 20, nil, nil).
+			AddButton("remove", func() {
+				// call api
+			}).
+			AddButton("Cancel", func() {
+				d.app.SetRoot(d.layout, true).SetFocus(d.list) // Return to main layout
+			})
+
+		form.SetBorder(true).SetTitle("remove friend").SetTitleAlign(tview.AlignCenter)
+
+		// Show the form as the new root
+		d.app.SetRoot(form, true).SetFocus(form)
+	})
+	removeFriendButton.SetBorder(true)
+	return removeFriendButton
+}
+
+func (d *Display) renderSettings() *tview.Flex {
+	addFriendBtn := d.renderAddFriendButton()
+	removeFriendBtn := d.renderRemoveFriendButton()
+	settingsViews := tview.NewFlex().SetDirection(tview.FlexRow)
+	settingsViews.SetBorder(true).SetTitle("settings")
+	settingsViews.AddItem(addFriendBtn, 0, 1, false)
+	settingsViews.AddItem(removeFriendBtn, 0, 1, false)
+	return settingsViews
+}
+
+func (d *Display) renderLeftSideWindows() *tview.Flex {
+	leftWindows := tview.NewFlex().SetDirection(tview.FlexRow)
+	leftWindows.AddItem(d.list, 0, 3, true).
+		AddItem(d.renderSettings(), 0, 1, false)
+	return leftWindows
+}
+
 func (d *Display) RenderMain() {
 
 	windows := []tview.Primitive{d.list, d.chatUi.flex}
@@ -54,18 +111,21 @@ func (d *Display) RenderMain() {
 		}
 		return event
 	})
+
+	d.list.Box.SetBorder(true).SetTitle("> Friends <")
 	for _, name := range fakeNames() {
 		currentName := name
 		d.list.AddItem(currentName, "", 'd', func() {
 			d.chatUi.SetNewChat(currentName)
 		})
 	}
-	d.list.Box.SetBorder(true).SetTitle("> Friends <")
+
 	d.layout.SetDirection(tview.FlexColumn).
-		AddItem(d.list, 30, 0, true).
+		AddItem(d.renderLeftSideWindows(), 30, 0, true).
 		AddItem(d.chatUi.flex, 0, 3, false)
 
-	if err := d.app.SetRoot(d.layout, true).SetFocus(d.list).Run(); err != nil {
+	d.app.EnableMouse(true)
+	if err := d.app.SetRoot(d.layout, true).Run(); err != nil {
 		panic(err)
 	}
 }
