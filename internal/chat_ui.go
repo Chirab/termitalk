@@ -11,7 +11,7 @@ type ChatUi struct {
 	chat      *tview.TextView
 	input     *tview.InputField
 	flex      *tview.Flex
-	name      string
+	dest      string
 	messageCh chan string
 	title     *tview.TextView
 }
@@ -38,7 +38,6 @@ func NewChatUi(a *tview.Application) *ChatUi {
 		AddItem(input, 3, 0, true)
 
 	return &ChatUi{
-		name:      "",
 		title:     title,
 		app:       a,
 		chat:      chatView,
@@ -48,14 +47,25 @@ func NewChatUi(a *tview.Application) *ChatUi {
 	}
 }
 
-func (c *ChatUi) SetName(name string) {
-	c.name = name
-	c.title.SetText(c.name)
+func (c *ChatUi) Reset() {
+	c.input.SetText("")
+	c.chat.SetText("")
+	c.title.SetText("Termitalk")
 }
 
-func (c *ChatUi) SetMessage() {
-	c.app.SetFocus(c.flex)
+func (c *ChatUi) SetNewChat(name string) {
+	if name != c.dest {
+		c.dest = name
+		c.chat.Clear()
+	}
+	c.app.SetFocus(c.input)
+	c.title.SetText(c.dest)
+
 	c.input.SetDoneFunc(func(key tcell.Key) {
+		if c.dest == "" {
+			return
+		}
+
 		if key == tcell.KeyEnter {
 			message := c.input.GetText()
 			if message == "" {
@@ -65,7 +75,7 @@ func (c *ChatUi) SetMessage() {
 				c.app.Stop()
 			}
 			c.input.SetText("")
-			c.messageCh <- fmt.Sprintf("(%s): %s", c.name, message)
+			c.messageCh <- fmt.Sprintf("(%s): %s", c.dest, message)
 		}
 	})
 
