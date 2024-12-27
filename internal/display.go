@@ -1,7 +1,6 @@
 package app
 
 import (
-	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
@@ -11,11 +10,14 @@ type Display struct {
 	layout *tview.Flex
 
 	chatUi *ChatUi
+
+	pages *tview.Pages
 }
 
 func NewDisplay() *Display {
 	tnl := tview.NewList()
 	app := tview.NewApplication()
+	pages := tview.NewPages()
 	return &Display{
 
 		app:    app,
@@ -23,6 +25,7 @@ func NewDisplay() *Display {
 		layout: tview.NewFlex(),
 
 		chatUi: NewChatUi(app),
+		pages:  pages,
 	}
 }
 
@@ -94,38 +97,23 @@ func (d *Display) renderLeftSideWindows() *tview.Flex {
 }
 
 func (d *Display) RenderMain() {
-
-	windows := []tview.Primitive{d.list, d.chatUi.flex}
-	currentFocus := 0
-
-	d.layout.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyTab {
-			currentFocus = (currentFocus) % len(windows)
-			focusedWindow := windows[currentFocus]
-			if focusedWindow == d.chatUi.flex {
-				d.chatUi.Reset()
-			}
-			d.app.SetFocus(focusedWindow)
-
-			return nil
-		}
-		return event
-	})
-
 	d.list.Box.SetBorder(true).SetTitle("> Friends <")
+
+	d.pages.AddPage("chat", d.chatUi.flex, true, false)
 	for _, name := range fakeNames() {
 		currentName := name
 		d.list.AddItem(currentName, "", 'd', func() {
-			d.chatUi.SetNewChat(currentName)
+			d.chatUi.SetNewChat(currentName, d.pages)
+			d.pages.SwitchToPage("chat")
+
 		})
 	}
 
 	d.layout.SetDirection(tview.FlexColumn).
-		AddItem(d.renderLeftSideWindows(), 30, 0, true).
-		AddItem(d.chatUi.flex, 0, 3, false)
-
+		AddItem(d.renderLeftSideWindows(), 30, 0, true)
+	d.pages.AddPage("list", d.layout, true, true)
 	d.app.EnableMouse(true)
-	if err := d.app.SetRoot(d.layout, true).Run(); err != nil {
+	if err := d.app.SetRoot(d.pages, true).Run(); err != nil {
 		panic(err)
 	}
 }

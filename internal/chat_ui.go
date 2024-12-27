@@ -53,19 +53,17 @@ func (c *ChatUi) Reset() {
 	c.title.SetText("Termitalk")
 }
 
-func (c *ChatUi) SetNewChat(name string) {
+func (c *ChatUi) SetNewChat(name string, p *tview.Pages) {
 	if name != c.dest {
 		c.dest = name
 		c.chat.Clear()
 	}
-	c.app.SetFocus(c.input)
-	c.title.SetText(c.dest)
 
+	c.title.SetText(c.dest)
 	c.input.SetDoneFunc(func(key tcell.Key) {
 		if c.dest == "" {
 			return
 		}
-
 		if key == tcell.KeyEnter {
 			message := c.input.GetText()
 			if message == "" {
@@ -79,6 +77,13 @@ func (c *ChatUi) SetNewChat(name string) {
 		}
 	})
 
+	c.app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyTab {
+			p.SwitchToPage("list")
+			return nil
+		}
+		return event
+	})
 	go func() {
 		for msg := range c.messageCh {
 			c.chat.Write([]byte(msg + "\n"))
