@@ -51,8 +51,6 @@ func (d *Display) renderAddFriendButton() *tview.Button {
 			})
 
 		form.SetBorder(true).SetTitle("Add a Friend").SetTitleAlign(tview.AlignCenter)
-
-		// Show the form as the new root
 		d.app.SetRoot(form, true).SetFocus(form)
 	})
 	addFriendButton.SetBorder(true)
@@ -71,8 +69,6 @@ func (d *Display) renderRemoveFriendButton() *tview.Button {
 			})
 
 		form.SetBorder(true).SetTitle("remove friend").SetTitleAlign(tview.AlignCenter)
-
-		// Show the form as the new root
 		d.app.SetRoot(form, true).SetFocus(form)
 	})
 	removeFriendButton.SetBorder(true)
