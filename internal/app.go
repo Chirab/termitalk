@@ -1,16 +1,18 @@
 package app
 
 import (
-	"fmt"
+	"github.com/rivo/tview"
 )
 
 type App struct {
 	authSvc    IAuth
 	displaySvc IDisplay
+
+	app *tview.Application
 }
 
 type IAuth interface {
-	Login(string, string) bool
+	RenderAuth()
 	IsAuth() bool
 }
 
@@ -18,17 +20,21 @@ type IDisplay interface {
 	RenderMain()
 }
 
-func NewApp(a IAuth, d IDisplay) *App {
+func NewApp() *App {
+	app := tview.NewApplication()
+	athm := &AuthMemory{}
 	return &App{
-		authSvc:    a,
-		displaySvc: d,
+		authSvc:    NewAuth(app, athm),
+		displaySvc: NewDisplay(app),
+		app:        app,
 	}
 }
 
 func (a *App) Run() {
 	if !a.authSvc.IsAuth() {
-		fmt.Println("please auth")
-	}
+		a.authSvc.RenderAuth()
+	} else {
 
-	a.displaySvc.RenderMain()
+		a.displaySvc.RenderMain()
+	}
 }

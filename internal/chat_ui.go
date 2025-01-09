@@ -2,6 +2,8 @@ package app
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -73,7 +75,8 @@ func (c *ChatUi) SetNewChat(name string, p *tview.Pages) {
 				c.app.Stop()
 			}
 			c.input.SetText("")
-			c.messageCh <- fmt.Sprintf("(%s): %s", c.dest, message)
+			t := time.Now()
+			c.messageCh <- fmt.Sprintf(" %s - (%s): %s", t.Format("15:04"), c.dest, message)
 		}
 	})
 

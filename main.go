@@ -5,9 +5,6 @@ import (
 )
 
 func main() {
-
-	auth := app.NewAuth()
-	d := app.NewDisplay()
-	a := app.NewApp(auth, d)
+	a := app.NewApp()
 	a.Run()
 }
