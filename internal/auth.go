@@ -74,7 +74,7 @@ func (a *Auth) logWithGithub() error {
 	}
 
 	queryParams := parsedURL.Query()
-	query := queryParams.Get("authid")
+	query := queryParams.Get("code")
 	a.athm.SetAuthId(query)
 
 	err = openBrowser(link)
@@ -99,5 +99,7 @@ func (a *Auth) RenderAuth() {
 }
 
 func (a *Auth) IsAuth() bool {
+
+	fmt.Println(a.athm.GetAuthId())
 	return false
 }
