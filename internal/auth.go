@@ -1,6 +1,8 @@
 package app
 
 import (
+	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/rivo/tview"
@@ -11,6 +13,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"time"
 )
 
 type Auth struct {
@@ -48,6 +51,47 @@ func openBrowser(link string) error {
 	return exec.Command(cmd, args...).Start()
 }
 
+func (a *Auth) CheckIsLogged() (string, error) {
+	fmt.Println("Checking IsLogged...")
+	resp, err := http.Get("http://localhost:8989/auth-polling?code=" + a.athm.GetAuthId())
+	if err != nil {
+		fmt.Println(err.Error())
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusBadRequest {
+		return "", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	reader := bufio.NewReader(resp.Body)
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return "", fmt.Errorf("error reading response: %w", err)
+		}
+
+		fmt.Println(line)
+
+		if line != "" && line != "data: false\n" {
+			var decodedMap map[string]string
+			err := json.Unmarshal([]byte(line), &decodedMap)
+			if err != nil {
+				return "", fmt.Errorf("failed to decode response: %w", err)
+			}
+			fmt.Println("User is logged in:", decodedMap)
+			return decodedMap["data"], nil
+		}
+
+		// Handle server-sent "data: false"
+		if line == "data: false\n" {
+
+		}
+
+		time.Sleep(2 * time.Second)
+	}
+}
+
 func (a *Auth) getGithubOauthUrl() (string, error) {
 	resp, err := http.Get("http://localhost:8989/github-url")
 	if err != nil {
@@ -62,11 +106,12 @@ func (a *Auth) getGithubOauthUrl() (string, error) {
 	return string(body), nil
 }
 
-func (a *Auth) logWithGithub() error {
+func (a *Auth) logWithGithub(auth chan AuthState) error {
 	link, err := a.getGithubOauthUrl()
 	if err != nil {
 		return err
 	}
+	fmt.Println("Log link:", link)
 	parsedURL, err := url.Parse(link)
 	if err != nil {
 		fmt.Println("Error parsing URL:", err)
@@ -74,21 +119,26 @@ func (a *Auth) logWithGithub() error {
 	}
 
 	queryParams := parsedURL.Query()
-	query := queryParams.Get("code")
+	fmt.Println(queryParams)
+	query := queryParams.Get("termiserv")
+	fmt.Println("------", query)
 	a.athm.SetAuthId(query)
 
 	err = openBrowser(link)
 	if err != nil {
 		return err
 	}
+
+	auth <- Islogged
 	return nil
 }
 
-func (a *Auth) RenderAuth() {
+func (a *Auth) RenderAuth(auth chan AuthState) {
 	button := tview.NewButton("Log With Github").SetSelectedFunc(func() {
-		err := a.logWithGithub()
+		err := a.logWithGithub(auth)
 		if err != nil {
 			log.Println("Error logging with Github:", err)
+			auth <- AuthFailed
 			return
 		}
 	})
@@ -98,8 +148,13 @@ func (a *Auth) RenderAuth() {
 	}
 }
 
-func (a *Auth) IsAuth() bool {
+func (a *Auth) UnsetAppRoot() {
+	a.app.Stop()
+}
 
-	fmt.Println(a.athm.GetAuthId())
-	return false
+func (a *Auth) IsAuth() bool {
+	if a.athm.GetAuthId() == "" {
+		return false
+	}
+	return true
 }
