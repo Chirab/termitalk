@@ -9,9 +9,11 @@ import (
 type App struct {
 	authSvc    IAuth
 	displaySvc IDisplay
+	serverSvc  *Server
 
-	authMemory *AuthMemory
+	authMemory *Memory
 	app        *tview.Application
+	cm         chan string
 }
 
 type IAuth interface {
@@ -33,13 +35,18 @@ const (
 )
 
 func NewApp() *App {
+	cm := make(chan string)
+	athm := &Memory{}
+	srv := NewServer("3434", athm, cm)
 	app := tview.NewApplication()
-	athm := &AuthMemory{}
+
 	return &App{
 		authSvc:    NewAuth(app, athm),
 		displaySvc: NewDisplay(app),
 		app:        app,
 		authMemory: athm,
+		serverSvc:  srv,
+		cm:         cm,
 	}
 }
 
@@ -47,25 +54,27 @@ func (a *App) Run() {
 	maxRetries := 3
 	retries := 0
 
+	go a.serverSvc.Start()
+
 	for retries < maxRetries {
 		auth := make(chan AuthState)
 		if !a.authSvc.IsAuth() {
 			go a.authSvc.RenderAuth(auth)
 		}
 
+		authId := <-a.cm
+		a.authMemory.SetAuthId(authId)
+		
 		state := <-auth
-		fmt.Println("state :", state)
 		switch state {
 		case Islogged:
-			fmt.Println("Logged in")
 			if err := a.handleLoggedState(); err != nil {
 				fmt.Println("Error in logged state, retrying...", err.Error())
 				retries++
 				continue
 			}
-			fmt.Println("my server side token :", a.authMemory.GetServerSideToken())
-			//a.displaySvc.RenderMain()
-			return
+			a.serverSvc.Shutdown()
+			a.displaySvc.RenderMain()
 		case AuthFailed:
 			fmt.Println("Authentication failed, retrying...")
 			retries++
@@ -75,6 +84,8 @@ func (a *App) Run() {
 			return
 		}
 	}
+
+	defer a.serverSvc.Shutdown()
 
 	fmt.Println("Max retries reached, exiting...")
 

@@ -9,7 +9,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -18,10 +17,10 @@ import (
 
 type Auth struct {
 	app  *tview.Application
-	athm *AuthMemory
+	athm *Memory
 }
 
-func NewAuth(app *tview.Application, athm *AuthMemory) *Auth {
+func NewAuth(app *tview.Application, athm *Memory) *Auth {
 	return &Auth{
 		app:  app,
 		athm: athm,
@@ -53,6 +52,9 @@ func openBrowser(link string) error {
 
 func (a *Auth) CheckIsLogged() (string, error) {
 	fmt.Println("Checking IsLogged...")
+	if a.athm.GetAuthId() == "" {
+		return "", errors.New("no auth id provided")
+	}
 	resp, err := http.Get("http://localhost:8989/auth-polling?code=" + a.athm.GetAuthId())
 	if err != nil {
 		fmt.Println(err.Error())
@@ -79,7 +81,7 @@ func (a *Auth) CheckIsLogged() (string, error) {
 			if err != nil {
 				return "", fmt.Errorf("failed to decode response: %w", err)
 			}
-			fmt.Println("User is logged in:", decodedMap)
+			fmt.Println("User is logged in:", decodedMap["data"])
 			return decodedMap["data"], nil
 		}
 
@@ -111,18 +113,6 @@ func (a *Auth) logWithGithub(auth chan AuthState) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("Log link:", link)
-	parsedURL, err := url.Parse(link)
-	if err != nil {
-		fmt.Println("Error parsing URL:", err)
-		return err
-	}
-
-	queryParams := parsedURL.Query()
-	fmt.Println(queryParams)
-	query := queryParams.Get("termiserv")
-	fmt.Println("------", query)
-	a.athm.SetAuthId(query)
 
 	err = openBrowser(link)
 	if err != nil {
