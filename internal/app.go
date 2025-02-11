@@ -37,6 +37,7 @@ const (
 func NewApp() *App {
 	cm := make(chan string)
 	athm := &Memory{}
+	athm.InitMetadataStorage()
 	srv := NewServer("3434", athm, cm)
 	app := tview.NewApplication()
 
@@ -64,7 +65,7 @@ func (a *App) Run() {
 
 		authId := <-a.cm
 		a.authMemory.SetAuthId(authId)
-		
+
 		state := <-auth
 		switch state {
 		case Islogged:
@@ -99,6 +100,5 @@ func (a *App) handleLoggedState() error {
 	if res == "" {
 		return errors.New("Logged in was not successful")
 	}
-	a.authMemory.DecodeUserInfo(res)
 	return nil
 }

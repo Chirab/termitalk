@@ -2,14 +2,16 @@ package app
 
 import (
 	"errors"
+	"io/ioutil"
 	"os"
-	"runtime"
+	"path/filepath"
 )
 
 type Memory struct {
-	token string
+	oauthId string
 
 	serverSideToken string
+	Username        string
 }
 
 type MYOS int64
@@ -20,17 +22,17 @@ const (
 	WINDOWS
 )
 
-const tmpfilename = "/tmp/termitalk"
+const tmpfilename = "termitalk"
 
 func (am *Memory) GetAuthId() string {
-	return am.token
+	return am.oauthId
 }
 
-func (am *Memory) SetAuthId(token string) {
-	am.token = token
+func (am *Memory) SetAuthId(oauthId string) {
+	am.oauthId = oauthId
 }
 
-func (am *Memory) DecodeUserInfo(i string) {
+func (am *Memory) SetServerSideToken(i string) {
 	am.serverSideToken = i
 }
 
@@ -47,25 +49,22 @@ func (am *Memory) WriteToTmpMetadataFile(s string) error {
 		return errors.New("input to tmp file is empty")
 	}
 
-	_, err := file.WriteString(s)
+	file, err := os.OpenFile(tmpfilename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
+	_, err = file.WriteString(s)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-func (am *Memory) MyOs() MYOS {
-	switch runtime.GOOS {
-	case "windows":
-		return WINDOWS
-	case "darwin":
-		return MAC
-	case "linux":
-		return LINUX
-	default:
-		panic("unrecognized os")
-	}
+func getTmpFilePath(filename string) string {
+	tmpDir := os.TempDir()
+	return filepath.Join(tmpDir, filename)
 }
 
 func (am *Memory) IsTmpMetadataFile() bool {
@@ -80,11 +79,34 @@ func (am *Memory) IsTmpMetadataFile() bool {
 	}
 }
 
-func (am *Memory) CreateTmpMetadataFile() {
-	file, err := os.Create(tmpfilename)
+func (am *Memory) createTmpMetadataFile(s string) {
+	file, err := os.Create(s)
 	if err != nil {
 		panic("cannot create metadata file")
 	}
 
 	defer file.Close()
+}
+
+func (am *Memory) InitMetadataStorage() error {
+	tmpFilePath := getTmpFilePath(tmpfilename)
+
+	if _, err := os.Stat(tmpFilePath); os.IsNotExist(err) {
+		file, err := os.Create(tmpFilePath)
+		if err != nil {
+			return err
+		}
+
+		defer file.Close()
+
+	}
+
+	data, err := ioutil.ReadFile(tmpFilePath)
+	if err != nil {
+		return err
+	}
+
+	am.SetServerSideToken(string(data))
+
+	return nil
 }
