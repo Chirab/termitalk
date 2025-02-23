@@ -37,7 +37,10 @@ const (
 func NewApp() *App {
 	cm := make(chan string)
 	athm := &Memory{}
-	athm.InitMetadataStorage()
+	err := athm.InitMetadataStorage()
+	if err != nil {
+		panic(err)
+	}
 	srv := NewServer("3434", athm, cm)
 	app := tview.NewApplication()
 
@@ -99,6 +102,11 @@ func (a *App) handleLoggedState() error {
 	}
 	if res == "" {
 		return errors.New("Logged in was not successful")
+	}
+	a.authMemory.SetServerSideToken(res)
+	err = a.authMemory.WriteToTokenFile(res)
+	if err != nil {
+		return err
 	}
 	return nil
 }

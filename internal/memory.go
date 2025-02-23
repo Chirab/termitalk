@@ -1,7 +1,7 @@
 package app
 
 import (
-	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -22,7 +22,8 @@ const (
 	WINDOWS
 )
 
-const tmpfilename = "termitalk"
+const tmpDirName = "termitalk"
+const tmpTokenfile = "token"
 
 func (am *Memory) GetAuthId() string {
 	return am.oauthId
@@ -44,68 +45,54 @@ func (am *Memory) GetServerSideToken() string {
  * Module to manage token in tmp folder
  */
 
-func (am *Memory) WriteToTmpMetadataFile(s string) error {
-	if s == "" {
-		return errors.New("input to tmp file is empty")
-	}
+func getTmpDirPath(dirname string) string {
+	return filepath.Join(os.TempDir(), dirname)
+}
 
-	file, err := os.OpenFile(tmpfilename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+func (am *Memory) WriteToTokenFile(s string) error {
+	fp := am.getTokenFile()
+	file, err := os.OpenFile(fp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open or create file: %w", err)
 	}
 	defer file.Close()
 
 	_, err = file.WriteString(s)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to write to file: %w", err)
 	}
+
 	return nil
+
 }
 
-func getTmpFilePath(filename string) string {
-	tmpDir := os.TempDir()
-	return filepath.Join(tmpDir, filename)
-}
-
-func (am *Memory) IsTmpMetadataFile() bool {
-	_, err := os.Stat(tmpfilename)
-	switch {
-	case err == nil:
-		return true
-	case os.IsNotExist(err):
-		return false
-	default:
-		return false
-	}
-}
-
-func (am *Memory) createTmpMetadataFile(s string) {
-	file, err := os.Create(s)
-	if err != nil {
-		panic("cannot create metadata file")
-	}
-
-	defer file.Close()
+func (am *Memory) getTokenFile() string {
+	tmpDirPath := getTmpDirPath(tmpDirName)
+	filePath := filepath.Join(tmpDirPath, tmpTokenfile)
+	return filePath
 }
 
 func (am *Memory) InitMetadataStorage() error {
-	tmpFilePath := getTmpFilePath(tmpfilename)
-
-	if _, err := os.Stat(tmpFilePath); os.IsNotExist(err) {
-		file, err := os.Create(tmpFilePath)
+	tmpDirPath := getTmpDirPath(tmpDirName)
+	filePath := filepath.Join(tmpDirPath, tmpTokenfile)
+	if _, err := os.Stat(tmpDirPath); os.IsNotExist(err) {
+		err := os.MkdirAll(tmpDirPath, 0755)
 		if err != nil {
 			return err
 		}
 
+		file, err := os.Create(filePath)
+		if err != nil {
+			return fmt.Errorf("failed to create file: %w", err)
+		}
 		defer file.Close()
-
+		return nil
 	}
 
-	data, err := ioutil.ReadFile(tmpFilePath)
+	data, err := ioutil.ReadFile("example.txt")
 	if err != nil {
 		return err
 	}
-
 	am.SetServerSideToken(string(data))
 
 	return nil

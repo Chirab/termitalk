@@ -58,6 +58,7 @@ func (s *Server) Shutdown() {
 	if err := s.server.Shutdown(ctx); err != nil {
 		fmt.Printf("Error shutting down server: %s\n", err)
 	} else {
+		os.Exit(84)
 		fmt.Println("Server stopped gracefully.")
 	}
 }
